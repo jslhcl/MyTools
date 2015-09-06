@@ -2,14 +2,20 @@
 
 # My Interesting and Useful Tools
 
-## FindPostsInDouban.py
+## DoubanAgent.py
 
-find all the posts of someone in a specific group / All groups he joins
+Features:
+
+1. find all the posts of someone in a specific group / All groups he joins
+
+2. find all the people in a sepcific region in a group
+
+3. send mail automatically
 
 execute
 
 ```Bash
-./FindPostsInDouban.py -h
+./DoubanAgent.py -h
 ```
 
 for the usage

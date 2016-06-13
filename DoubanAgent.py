@@ -69,7 +69,7 @@ class DoubanAgent:
 		# TODO: It is said that the User-Agent is needed in the header, but it is ok now without it
 		params = {'form_email':email, 'form_password':passwd, 'source':'None'}
 		response = opener.open(loginurl, urllib.urlencode(params))
-		if response.geturl().find('http://accounts.douban.com/login') >= 0:
+		if response.geturl().find('accounts.douban.com/login') >= 0:
 			html = response.read()
 			imgurl=re.search('<img id="captcha_image" src="(.+?)" alt="captcha" class="captcha_image"/>', html)
 			if imgurl:
@@ -83,11 +83,11 @@ class DoubanAgent:
 					params['login'] = '登录'
 		
 					response = opener.open(loginurl, urllib.urlencode(params))
-					if response.geturl() == 'http://www.douban.com/':
+					if response.geturl().find('www.douban.com/') >= 0:
 						print 'login success!'
 						self.cookie = cookie
 						return True
-                elif response.geturl().find('http://www.douban.com/') >= 0:
+                elif response.geturl().find('www.douban.com/') >= 0:
                         print 'login success!'
                         self.cookie = cookie
                         return True

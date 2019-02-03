@@ -39,3 +39,7 @@ Then call the script:
 ```Bash
 ./sendmail.py your@email.com emailListFile contentFile
 ```
+
+## upload.js
+
+use Node.js to received an uploaded .tex file, and return the corresponding .pdf file as response

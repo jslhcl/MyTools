@@ -45,3 +45,20 @@ Then call the script:
 ## upload.js
 
 use Node.js to received an uploaded .tex file, and return the corresponding .pdf file as response
+
+## createFileBatch.sh
+
+Script to create batch files. 
+
+```Batch
+./createFileBatch.sh "10M" 20     # create 20 files each size is 10M
+```
+
+## doubanGroup.js
+
+js version douban agent
+
+## leetcode\_allProblems.js
+
+Retrieve all problems of leetcode
+

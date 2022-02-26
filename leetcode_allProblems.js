@@ -4,7 +4,7 @@ let getCSRFToken = function(cookies) {
         if (kvp[0].indexOf('csrftoken') >= 0) return kvp[1];
     }
     return '';
-}
+};
 
 let getQuestions = async function(csrfToken, skip, limit) {
     let postBody = {
@@ -25,7 +25,7 @@ let getQuestions = async function(csrfToken, skip, limit) {
         ret = data.data.problemsetQuestionList.questions;
     });
     return ret;
-}
+};
 
 let saveFile = function(fileName, fileContent) {
     let bb = new Blob([fileContent ], { type: 'text/plain' });
@@ -33,7 +33,7 @@ let saveFile = function(fileName, fileContent) {
     a.download = fileName;
     a.href = window.URL.createObjectURL(bb);
     a.click();
-}
+};
 
 let main = async function() {
     let csrfToken = getCSRFToken(document.cookie.split(';'));
@@ -50,6 +50,62 @@ let main = async function() {
     let fileName = 'leetcode_all' + allProblems.length + '_' + (new Date().toISOString().split('T')[0]) + '.json'
     let fileContent = JSON.stringify(allProblems); 
     saveFile(fileName, fileContent);
-}
+};
 
-main();
+//main();
+
+// running in Node.js
+/**
+ * @param {*} problem 
+ * @param {*} filter: {likesAtLeast:100, ratioAtLeast:10, status:"ac"|"notac"|null, topic:"Array"|"Linked List"|"Hash Table"} 
+ * @returns true means this problem is what we want, false otherwise
+ */
+let passCheck = function(problem, filter) {
+    if ((filter.likesAtLeast !== undefined && problem.likes < filter.likesAtLeast) || 
+        (filter.ratioAtLeast !== undefined && problem.likes/problem.dislikes < filter.ratioAtLeast) ||
+        (filter.status !== undefined && problem.status !== filter.status)) {
+            return false;
+    }
+    
+    let matchTopic = (filter.topic === undefined);
+    for (let topic of problem.topicTags) {
+        if (topic.name === filter.topic) {
+            matchTopic = true;
+            break;
+        }
+    }
+
+    return matchTopic;
+};
+
+const fs = require('fs');
+
+let main2 = function(problemJsonFilePath, filter) {
+    let ret = [];
+    
+    try {
+        let data = fs.readFileSync(problemJsonFilePath, 'utf8');
+        let problems = JSON.parse(data);
+        problems.forEach(p => {
+            if (passCheck(p, filter)) {
+                console.log('here');
+                ret.push({frontendQuestionId: p.frontendQuestionId, title: p.title, likes: p.likes, ratio: p.likes/p.dislikes});
+                console.log('ret.length:'+ret.length);
+            }
+        });
+    }
+    catch (err) {
+        console.log('err:'+err);
+    }
+    return ret;
+};
+
+let problemJsonFilePath = '/mnt/c/Users/leca/Downloads/leetcode_all2183_2022-02-22.json';
+let filter = {
+    likesAtLeast: 2000,
+    ratioAtLeast: 10,
+    status: null,
+};
+let ret = main2(problemJsonFilePath, filter);
+ret.sort((a,b) => a.likes - b.likes);
+console.log(ret);

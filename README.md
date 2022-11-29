@@ -62,3 +62,6 @@ js version douban agent
 
 Retrieve all problems of leetcode
 
+## stock.py
+
+Retrieve daily stock price and send mail based on certain strategies

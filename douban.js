@@ -68,7 +68,7 @@ let getBookDetails = async function(bookDomNode) {
     ret.comment = ret.comment.length > 0 ? ret.comment[0].innerText.trim() : "";
 
     ret.date = bookDomNode.getElementsByClassName("date");
-    ret.date = ret.date.length > 0 ? ret.date[0].innerText.split(' ')[0] : "";
+    ret.date = ret.date.length > 0 ? ret.date[0].innerText.split(' ')[0].trim() : "";
 
     ret.tags = bookDomNode.getElementsByClassName("tags");
     ret.tags = ret.tags.length > 0 ? ret.tags[0].innerText : "";
@@ -125,10 +125,45 @@ let doubanBooks = async function(userId) {
     return ret;
 }
 
-let main = async function() {
+let exportDoubanBooks = async function() {
     let books = await doubanBooks("jslhcl");
     let fileContent = convertToCsvFormat(books);
     saveFile("jslhcl-book-collect.csv", fileContent);
 }
 
-main();
+//await exportDoubanBooks();
+
+// run the following code snippet in Node.js
+const fs = require("fs");
+let doubanBooksCsvPath = "/mnt/c/Users/leca/Downloads/jslhcl-book-collect.csv";
+let convertDoubanCsvToGoodReadsCsv = function(doubanCsvPath, goodReadsCsvPath) {
+    let lines = fs.readFileSync(doubanCsvPath, "utf8").split("\n"), books = [];
+    let meta = lines[0].split(";");
+    for (let i = 1; i < lines.length; i++) {
+        let fields = lines[i].split(";");
+        if (fields.length == meta.length) {
+            let book = {};
+            book.title = fields[0];
+            book.isbn = fields[1];
+            book.url = fields[2];
+            book.rate = fields[3];
+            book.date = fields[4];
+            book.tags = fields[5];
+            book.comment = fields[6];
+            books.push(book);
+        } else {
+            books[books.length-1].comment += " " + lines[i].trim();  // comment may have muliple lines
+        }
+    }
+    console.log("book number:" + books.length);
+
+    //let content = "ISBN,My Rating,Date Read,Shelves,Bookshelves,My Review";
+    let content = "ISBN,My Rating,Date Read";
+    for (let book of books) {
+        // if (book.isbn.length > 0) content += "\n"+book.isbn+","+book.rate+","+book.date+",,"+book.tags+","+book.comment;
+        if (book.isbn.length > 0) content += "\n"+book.isbn+","+book.rate+","+book.date; // try ASCII chars only
+    }    
+    fs.writeFileSync(goodReadsCsvPath, content);
+}
+
+convertDoubanCsvToGoodReadsCsv("/mnt/c/Users/leca/Downloads/jslhcl-book-collect.csv", "/mnt/c/Users/leca/Downloads/goodBooks.csv");

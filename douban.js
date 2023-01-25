@@ -125,23 +125,107 @@ let doubanBooks = async function(userId) {
     return ret;
 }
 
-let exportDoubanBooks = async function() {
-    let books = await doubanBooks("jslhcl");
+let exportDoubanBooks = async function(userId, exportPath) {
+    let books = await doubanBooks(userId);
     let fileContent = convertToCsvFormat(books);
-    saveFile("jslhcl-book-collect.csv", fileContent);
+    saveFile(exportPath, fileContent);
 }
 
-//await exportDoubanBooks();
+//await exportDoubanBooks("jslhcl", "jslhcl-book-collect.csv");
+
+let getMovieImdb = async function(movieUrl) {
+    let ret = '';
+    await fetch(movieUrl, headers).then(response => response.text()).then(content => {
+        let parser = new DOMParser();
+        let doc = parser.parseFromString(content, "text/html");
+        let info = doc.getElementById("info");
+        if (info !== null) {
+            info = info.innerText.split("\n");
+            for (let i of info) {
+                if (i.indexOf("IMDb: ") >= 0) {
+                    ret = i.substring(i.indexOf("IMDb: ")+"IMDb: ".length).trim();
+                    break;
+                }
+            }
+        }
+    });
+    return ret;
+}
+
+let getMovieDetails = async function(movieDomNode) {
+    let ret = {};
+    ret.url = movieDomNode.getElementsByClassName("title")[0].children[0].getAttribute("href");
+    ret.title = movieDomNode.getElementsByClassName("title")[0].children[0].innerText.split("/")[0].trim();
+
+    ret.comment = movieDomNode.getElementsByClassName("comment");
+    ret.comment = ret.comment.length > 0 ? ret.comment[0].innerText.trim() : "";
+
+    ret.date = movieDomNode.getElementsByClassName("date");
+    ret.date = ret.date.length > 0 ? ret.date[0].innerText.split(' ')[0].trim() : "";
+
+    ret.tags = movieDomNode.getElementsByClassName("tags");
+    ret.tags = ret.tags.length > 0 ? ret.tags[0].innerText : "";
+    if (ret.tags.startsWith("标签: ")) ret.tags = ret.tags.substring("标签: ".length);
+    
+    ret.rate = 0;
+    if (movieDomNode.getElementsByClassName("rating1-t").length == 1) ret.rate = 1;
+    else if (movieDomNode.getElementsByClassName("rating2-t").length == 1) ret.rate = 2;
+    else if (movieDomNode.getElementsByClassName("rating3-t").length == 1) ret.rate = 3;
+    else if (movieDomNode.getElementsByClassName("rating4-t").length == 1) ret.rate = 4;
+    else if (movieDomNode.getElementsByClassName("rating5-t").length == 1) ret.rate = 5;
+    
+    ret.imdb = await getMovieImdb(ret.url);
+    return ret;
+}
+
+let doubanMovies = async function(userId) {
+    let ret = [], index = 0, movies = null; 
+    do {
+        let movieCollectUrl = "https://movie.douban.com/people/" + userId + "/collect?start=" + index;
+        movies = null;
+        await fetch(movieCollectUrl, headers).then(response => response.text()).then(content => {
+            let parser = new DOMParser();
+            let doc = parser.parseFromString(content, "text/html");
+            movies = doc.getElementsByClassName("item");
+        });
+
+        for (let movieDomNode of movies) {
+            let movieDetail = await getMovieDetails(movieDomNode);
+            await new Promise(r => setTimeout(r, 2000));
+            console.log("movieDetail:"+movieDetail);
+            ret.push(movieDetail);
+        }
+
+        index += movies.length;
+        console.log("index = " + index);
+    } while (movies.length > 0);
+    return ret;
+}
+
+let convertToCsvFormat2 = function(movies) {
+    let ret = "Title;IMDb;URL;My Rating;Date;Tags;Comment";
+    for (let movie of movies) {
+        ret += "\n" + movie.title + ";" + movie.imdb + ";" + movie.url + ";" + movie.rate + ";" + movie.date + ";" + movie.tags + ";" + movie.comment;
+    }
+    return ret;
+}
+
+let exportDoubanMovies = async function(userId, exportPath) {
+    let movies = await doubanMovies(userId);
+    let fileContent = convertToCsvFormat2(movies);
+    saveFile(exportPath, fileContent);
+}
+
+await exportDoubanMovies("jslhcl", "jslhcl-movie-collect.csv");
 
 // run the following code snippet in Node.js
 const fs = require("fs");
-let doubanBooksCsvPath = "/mnt/c/Users/leca/Downloads/jslhcl-book-collect.csv";
 let convertDoubanCsvToGoodReadsCsv = function(doubanCsvPath, goodReadsCsvPath) {
     let lines = fs.readFileSync(doubanCsvPath, "utf8").split("\n"), books = [];
     let meta = lines[0].split(";");
     for (let i = 1; i < lines.length; i++) {
         let fields = lines[i].split(";");
-        if (fields.length == meta.length) {
+        if (fields.length === meta.length) {
             let book = {};
             book.title = fields[0];
             book.isbn = fields[1];
@@ -166,4 +250,52 @@ let convertDoubanCsvToGoodReadsCsv = function(doubanCsvPath, goodReadsCsvPath) {
     fs.writeFileSync(goodReadsCsvPath, content);
 }
 
-convertDoubanCsvToGoodReadsCsv("/mnt/c/Users/leca/Downloads/jslhcl-book-collect.csv", "/mnt/c/Users/leca/Downloads/goodBooks.csv");
+convertDoubanCsvToGoodReadsCsv("/mnt/c/Users/leca/Downloads/jslhcl-book-collect.csv", "/mnt/c/Users/leca/Downloads/goodBooks_review.csv");
+
+// IMDB
+let doubanMoviesRate = function(doubanMovieCsvPath) {
+    let lines = fs.readFileSync(doubanMovieCsvPath, "utf8").split("\n"), ret = {};
+    let meta = lines[0].split(";");
+    for (let i = 1; i < lines.length; i++) {
+        let fields = lines[i].split(";");   // Title;IMDb;URL;My Rating;Date;Tags;Comment
+        if (fields.length === meta.length) {
+            if (fields[1].length === 0) console.log("No IMDb for:" + fields[0]);
+            else {
+                if (fields[3] === '0') console.log("No rate for:" + fields[0]);
+                ret[fields[1]] = parseInt(fields[3]);
+            }
+        }
+    }
+    return ret;
+}
+
+let imdb2rate = doubanMoviesRate("/mnt/c/Users/leca/Downloads/jslhcl-movie-collect.csv"); 
+console.log("count:" + Object.keys(imdb2rate).length + "\n" + JSON.stringify(imdb2rate));
+
+let postImdbRate = async function(rating, titleId) {
+    let postBody = {
+        query:"mutation UpdateTitleRating($rating: Int!, $titleId: ID!) {rateTitle(input: {rating: $rating, titleId: $titleId}) {rating {value __typename} __typename}}",
+        operationName:"UpdateTitleRating",
+        variables:{"rating":rating,"titleId":titleId}
+    };
+    let postHeaders = {
+        method: "POST",
+        credentials: "include",
+        headers: {
+            "content-type": "application/json",
+        },
+        body: JSON.stringify(postBody),
+    };
+    await fetch("https://api.graphql.imdb.com/", postHeaders).then(response => response.json()).then(data => {console.log(data)});
+}
+
+let importDoubanRating2Imdb = async function(imdb2rate) {
+    let rates = JSON.parse(imdb2rate);
+    for (const imdb in rates) {
+        let rate = rates[imdb] * 2;
+        if (rate === 0) rate = 6;
+        await postImdbRate(rate, imdb);
+        await new Promise(r => setTimeout(r, 2000));
+        console.log(imdb);
+    }
+}

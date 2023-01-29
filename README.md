@@ -54,9 +54,21 @@ Script to create batch files.
 ./createFileBatch.sh "10M" 20     # create 20 files each size is 10M
 ```
 
-## doubanGroup.js
+## douban.js
 
-js version douban agent
+JavaScript version douban agent. 
+
+API:
+
+*function* doubanGroup: Get group members group by region
+
+*function* exportDoubanItems: export the books/movies the user collected to CSV format
+
+*class* DoubanItemsExportor: Get the books/movies the user collected. 
+
+*function* convertDoubanCsvToGoodReadsCsv: convert Douban books CSV file to GoodReads importable CSV format
+
+*function* importDoubanRating2Imdb: import Douban movies to imdb.com
 
 ## leetcode\_allProblems.js
 

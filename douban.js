@@ -47,176 +47,131 @@ function doubanGroup(groupID, region) {
         });
 }
 
-let getBookISBN = async function(bookUrl) {
-    let ret = '';
-    await fetch(bookUrl, headers).then(response => response.text()).then(content => {
-        let parser = new DOMParser();
-        let doc = parser.parseFromString(content, "text/html");
-        let info = doc.getElementById("info");
-        if (info !== null && info.innerText.indexOf("ISBN: ") >= 0) {
-            ret = info.innerText.substring(info.innerText.indexOf("ISBN: ")+"ISBN: ".length).trim();
-        }
-    });
-    return ret;
-}
-
-let getBookDetails = async function(bookDomNode) {
-    let ret = {};
-    ret.url = bookDomNode.getElementsByTagName("h2")[0].children[0].getAttribute("href");
-    ret.title = bookDomNode.getElementsByTagName("h2")[0].children[0].getAttribute("title");
-    ret.comment = bookDomNode.getElementsByClassName("comment");
-    ret.comment = ret.comment.length > 0 ? ret.comment[0].innerText.trim() : "";
-
-    ret.date = bookDomNode.getElementsByClassName("date");
-    ret.date = ret.date.length > 0 ? ret.date[0].innerText.split(' ')[0].trim() : "";
-
-    ret.tags = bookDomNode.getElementsByClassName("tags");
-    ret.tags = ret.tags.length > 0 ? ret.tags[0].innerText : "";
-    if (ret.tags.startsWith("标签: ")) ret.tags = ret.tags.substring("标签: ".length);
-    
-    ret.rate = 0;
-    if (bookDomNode.getElementsByClassName("rating1-t").length == 1) ret.rate = 1;
-    else if (bookDomNode.getElementsByClassName("rating2-t").length == 1) ret.rate = 2;
-    else if (bookDomNode.getElementsByClassName("rating3-t").length == 1) ret.rate = 3;
-    else if (bookDomNode.getElementsByClassName("rating4-t").length == 1) ret.rate = 4;
-    else if (bookDomNode.getElementsByClassName("rating5-t").length == 1) ret.rate = 5;
-    
-    ret.isbn = await getBookISBN(ret.url);
-    return ret;
-}
-
-let convertToCsvFormat = function(books) {
-    let ret = "Title;ISBN;URL;My Rating;Date;Tags;Comment";
-    for (let book of books) {
-        ret += "\n" + book.title + ";" + book.isbn + ";" + book.url + ";" + book.rate + ";" + book.date + ";" + book.tags + ";" + book.comment;
-    }
-    return ret;
-}
-
-let saveFile = function(fileName, fileContent) {
-    let bb = new Blob([fileContent ], { type: 'text/plain' });
-    let a = document.createElement('a');
-    a.download = fileName;
-    a.href = window.URL.createObjectURL(bb);
-    a.click();
-};
-
-let doubanBooks = async function(userId) {
-    let ret = [], index = 0, books = null; 
-    do {
-        let bookCollectUrl = "https://book.douban.com/people/" + userId + "/collect?start=" + index;
-        books = null;
-        await fetch(bookCollectUrl, headers).then(response => response.text()).then(content => {
+class DoubanItemsExportor {
+    type = '';
+    itemsClassNameInDom = '';
+    parseIdFromText(text) {return text;};
+    getItemUrl(itemNode) { return ''; }
+    getItemTitle(itemNode) { return ''; }
+    async getItemId(itemUrl) {
+        let ret = '';
+        await fetch(itemUrl, headers).then(response => response.text()).then(content => {
             let parser = new DOMParser();
             let doc = parser.parseFromString(content, "text/html");
-            books = doc.getElementsByClassName("subject-item");
+            let info = doc.getElementById("info");
+            ret = this.parseIdFromText(info === null ? '' : info.innerText);
         });
+        return ret;
+    }
+    async getItemDetails(itemNode) {
+        let ret = {};
+        ret.comment = itemNode.getElementsByClassName("comment");
+        ret.comment = ret.comment.length > 0 ? ret.comment[0].innerText.trim() : "";
 
-        for (let bookDomNode of books) {
-            let bookDetail = await getBookDetails(bookDomNode);
-            await new Promise(r => setTimeout(r, 2000));
-            console.log("bookDetail:"+bookDetail);
-            ret.push(bookDetail);
+        ret.date = itemNode.getElementsByClassName("date");
+        ret.date = ret.date.length > 0 ? ret.date[0].innerText.split(' ')[0].trim() : "";
+
+        ret.tags = itemNode.getElementsByClassName("tags");
+        ret.tags = ret.tags.length > 0 ? ret.tags[0].innerText : "";
+        if (ret.tags.startsWith("标签: ")) ret.tags = ret.tags.substring("标签: ".length);
+        
+        ret.rate = 0;
+        if (itemNode.getElementsByClassName("rating1-t").length == 1) ret.rate = 1;
+        else if (itemNode.getElementsByClassName("rating2-t").length == 1) ret.rate = 2;
+        else if (itemNode.getElementsByClassName("rating3-t").length == 1) ret.rate = 3;
+        else if (itemNode.getElementsByClassName("rating4-t").length == 1) ret.rate = 4;
+        else if (itemNode.getElementsByClassName("rating5-t").length == 1) ret.rate = 5;
+
+        ret.title = this.getItemTitle(itemNode);
+        ret.url = this.getItemUrl(itemNode);
+        ret.id = await this.getItemId(ret.url);
+        return ret;
+    };
+    async getItems(userId) {
+        let ret = [], index = 0, itemsDomNode = null; 
+        do {
+            let itemCollectUrl = "https://"+this.type+".douban.com/people/" + userId + "/collect?start=" + index;
+            itemsDomNode = null;
+            await fetch(itemCollectUrl, headers).then(response => response.text()).then(content => {
+                let parser = new DOMParser();
+                let doc = parser.parseFromString(content, "text/html");
+                itemsDomNode = doc.getElementsByClassName(this.itemsClassNameInDom);
+            });
+    
+            for (let itemNode of itemsDomNode) {
+                let itemDetail = await this.getItemDetails(itemNode);
+                await new Promise(r => setTimeout(r, 2000));
+                console.log("itemDetail:"+itemDetail);
+                ret.push(itemDetail);
+            }
+    
+            index += itemsDomNode.length;
+            console.log("index = " + index);
+        } while (itemsDomNode.length > 0);
+        return ret;
+    };
+    convertToCsvFormat(items) {
+        let ret = "Title;Id;URL;My Rating;Date;Tags;Comment";
+        for (let item of items) {
+            ret += "\n" + item.title + ";" + item.id + ";" + item.url + ";" + item.rate + ";" + item.date + ";" + item.tags + ";" + item.comment;
         }
-
-        index += books.length;
-        console.log("index = " + index);
-    } while (books.length > 0);
-    return ret;
+        return ret;
+    };
+    saveFile(fileName, fileContent) {
+        let bb = new Blob([fileContent ], { type: 'text/plain' });
+        let a = document.createElement('a');
+        a.download = fileName;
+        a.href = window.URL.createObjectURL(bb);
+        a.click();
+    };
+    async Run(userId, fileName) {
+        let items = await this.getItems(userId);
+        let fileContent = this.convertToCsvFormat(items);
+        this.saveFile(fileName, fileContent);
+    }
 }
 
-let exportDoubanBooks = async function(userId, exportPath) {
-    let books = await doubanBooks(userId);
-    let fileContent = convertToCsvFormat(books);
-    saveFile(exportPath, fileContent);
+class BookExportor extends DoubanItemsExportor {
+    type = 'book';
+    itemsClassNameInDom = 'subject-item';
+    parseIdFromText(text) {
+        if (text.indexOf("ISBN: ") >= 0) {
+            return text.substring(text.indexOf("ISBN: ")+"ISBN: ".length).trim();
+        }
+        return '';
+    }
+    getItemUrl(itemNode) { return itemNode.getElementsByTagName("h2")[0].children[0].getAttribute("href"); }
+    getItemTitle(itemNode) { return itemNode.getElementsByTagName("h2")[0].children[0].getAttribute("title"); }
 }
 
-//await exportDoubanBooks("jslhcl", "jslhcl-book-collect.csv");
-
-let getMovieImdb = async function(movieUrl) {
-    let ret = '';
-    await fetch(movieUrl, headers).then(response => response.text()).then(content => {
-        let parser = new DOMParser();
-        let doc = parser.parseFromString(content, "text/html");
-        let info = doc.getElementById("info");
-        if (info !== null) {
-            info = info.innerText.split("\n");
-            for (let i of info) {
-                if (i.indexOf("IMDb: ") >= 0) {
-                    ret = i.substring(i.indexOf("IMDb: ")+"IMDb: ".length).trim();
-                    break;
-                }
+class MovieExportor extends DoubanItemsExportor {
+    type = 'movie';
+    itemsClassNameInDom = 'item';
+    parseIdFromText(text) {
+        for (let i of text.split('\n')) {
+            if (i.indexOf("IMDb: ") >= 0) {
+                return i.substring(i.indexOf("IMDb: ")+"IMDb: ".length).trim();
             }
         }
-    });
-    return ret;
+        return '';
+    };
+    getItemUrl(itemNode) { return itemNode.getElementsByClassName("title")[0].children[0].getAttribute("href"); }
+    getItemTitle(itemNode) { return itemNode.getElementsByClassName("title")[0].children[0].innerText.split("/")[0].trim(); }
 }
 
-let getMovieDetails = async function(movieDomNode) {
-    let ret = {};
-    ret.url = movieDomNode.getElementsByClassName("title")[0].children[0].getAttribute("href");
-    ret.title = movieDomNode.getElementsByClassName("title")[0].children[0].innerText.split("/")[0].trim();
-
-    ret.comment = movieDomNode.getElementsByClassName("comment");
-    ret.comment = ret.comment.length > 0 ? ret.comment[0].innerText.trim() : "";
-
-    ret.date = movieDomNode.getElementsByClassName("date");
-    ret.date = ret.date.length > 0 ? ret.date[0].innerText.split(' ')[0].trim() : "";
-
-    ret.tags = movieDomNode.getElementsByClassName("tags");
-    ret.tags = ret.tags.length > 0 ? ret.tags[0].innerText : "";
-    if (ret.tags.startsWith("标签: ")) ret.tags = ret.tags.substring("标签: ".length);
-    
-    ret.rate = 0;
-    if (movieDomNode.getElementsByClassName("rating1-t").length == 1) ret.rate = 1;
-    else if (movieDomNode.getElementsByClassName("rating2-t").length == 1) ret.rate = 2;
-    else if (movieDomNode.getElementsByClassName("rating3-t").length == 1) ret.rate = 3;
-    else if (movieDomNode.getElementsByClassName("rating4-t").length == 1) ret.rate = 4;
-    else if (movieDomNode.getElementsByClassName("rating5-t").length == 1) ret.rate = 5;
-    
-    ret.imdb = await getMovieImdb(ret.url);
-    return ret;
-}
-
-let doubanMovies = async function(userId) {
-    let ret = [], index = 0, movies = null; 
-    do {
-        let movieCollectUrl = "https://movie.douban.com/people/" + userId + "/collect?start=" + index;
-        movies = null;
-        await fetch(movieCollectUrl, headers).then(response => response.text()).then(content => {
-            let parser = new DOMParser();
-            let doc = parser.parseFromString(content, "text/html");
-            movies = doc.getElementsByClassName("item");
-        });
-
-        for (let movieDomNode of movies) {
-            let movieDetail = await getMovieDetails(movieDomNode);
-            await new Promise(r => setTimeout(r, 2000));
-            console.log("movieDetail:"+movieDetail);
-            ret.push(movieDetail);
-        }
-
-        index += movies.length;
-        console.log("index = " + index);
-    } while (movies.length > 0);
-    return ret;
-}
-
-let convertToCsvFormat2 = function(movies) {
-    let ret = "Title;IMDb;URL;My Rating;Date;Tags;Comment";
-    for (let movie of movies) {
-        ret += "\n" + movie.title + ";" + movie.imdb + ";" + movie.url + ";" + movie.rate + ";" + movie.date + ";" + movie.tags + ";" + movie.comment;
+async function exportDoubanItems(userId, exportPath, bookOrMovie) {
+    let exportor = null;
+    if (bookOrMovie == "book") exportor = new BookExportor();
+    else if (bookOrMovie == "movie") exportor = new MovieExportor();
+    else {
+        console.log("No exportor support for " + bookOrMovie);
+        return;
     }
-    return ret;
+    exportor.Run(userId, exportPath);
 }
 
-let exportDoubanMovies = async function(userId, exportPath) {
-    let movies = await doubanMovies(userId);
-    let fileContent = convertToCsvFormat2(movies);
-    saveFile(exportPath, fileContent);
-}
-
-await exportDoubanMovies("jslhcl", "jslhcl-movie-collect.csv");
+//await exportDoubanItems("jslhcl", "jslhcl-book-collect2.csv", "book");
+//await exportDoubanItems("jslhcl", "jslhcl-movie-collect2.csv", "movie");
 
 // run the following code snippet in Node.js
 const fs = require("fs");

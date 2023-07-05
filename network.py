@@ -10,7 +10,7 @@ class Network(object):
             self.biases = biases
         else:
             self.weights = [numpy.random.randn(y, x) for x, y in zip(sizes[:-1], sizes[1:])]
-            self.biases = [numpy.random.randn(y, 1) for y in sizes[1:]]
+            self.biases = [numpy.random.randn(y) for y in sizes[1:]]
 
     def feedforward(self, a):
         for w, b in zip(self.weights, self.biases):

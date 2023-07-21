@@ -77,3 +77,7 @@ Retrieve all problems of leetcode
 ## stock.py
 
 Retrieve daily stock price and send mail based on certain strategies
+
+## network.py
+
+A toy Neural Network code from scratch, using MNIST to train the network with naive numerical gradient or backpropagation 

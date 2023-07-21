@@ -50,8 +50,8 @@ def softmax(x):
 def sigmoid(z):
     return 1.0 / (1.0 + numpy.exp(-z))
 
-def sigmoid_backward(z):
-    return sigmoid(z) * (1-sigmoid(z))
+#def sigmoid_backward(z):
+#    return sigmoid(z) * (1-sigmoid(z))
 
 def cross_entropy_error(y, t):
     if y.ndim == 1 and t.ndim == 1:
@@ -103,26 +103,18 @@ class Network(object):
 
         activation = data
         activations = [data]
-        zs = []
         for w, b in zip(self.weights, self.biases):
             z = numpy.dot(activation, w) + b
-            zs.append(z)
             activation = sigmoid(z)
             activations.append(activation)
         y = softmax(activation)
-
         dy = (y-label) / batch_num  # backward of softmax-with-loss
-        dy = dy * sigmoid_backward(zs[-1])
-        self.biases_grad[-1] = dy
-        self.weights_grad[-1] = numpy.dot(dy, activations[-2].T)
-
-        for i in range(2, len(self.weights)):
-            z = zs[-i]
-            sp = sigmoid_backward(z)
-            delta = numpy.dot(self.weights[1-i].T , delta) * sp
-            self.biases_grad[-i] = delta
-            self.weights_grad[-i] = numpy.dot(delta, activations[-i-1].T)
-
+        
+        for i in range(1, len(self.weights)+1):
+            dsigmoid = dy * activations[-i] * (1-activations[-i])  # backward of sigmoid
+            self.weights_grad[-i] = numpy.dot(activations[-i-1].T, dsigmoid)
+            self.biases_grad[-i] = numpy.sum(dsigmoid, axis=0)
+            dy = numpy.dot(dsigmoid, self.weights[-i].T)    # d(activation)
 
     def train(self, train_data, train_label):
         batch_size = 100
@@ -135,12 +127,13 @@ class Network(object):
             label_batch = train_label[batch_index]
 
             # method 1, get gradient from numerical_gradient function
-            for j in range(len(self.weights)):
-                self.weights_grad[j] = self.numerical_gradient(data_batch, label_batch, self.weights[j])
-            for j in range(len(self.biases)):
-                self.biases_grad[j] = self.numerical_gradient(data_batch, label_batch, self.biases[j])
+#            for j in range(len(self.weights)):
+#                self.weights_grad[j] = self.numerical_gradient(data_batch, label_batch, self.weights[j])
+#            for j in range(len(self.biases)):
+#                self.biases_grad[j] = self.numerical_gradient(data_batch, label_batch, self.biases[j])
 
             # methond 2, get gradient from backpropagation algorithm
+            self.gradient(data_batch, label_batch)
             
             for j in range(len(self.weights)):
                 self.weights[j] -= learning_rate * self.weights_grad[j]
@@ -186,11 +179,12 @@ def Test():
 
             
 if __name__ == '__main__':
-    Test()
+#    Test()
 
-#    mnist_loader = MNIST_loader('c:/users/leca/Downloads/mnist/train-images.idx3-ubyte', 'c:/users/leca/Downloads/mnist/train-labels.idx1-ubyte', 
-#            'c:/users/leca/Downloads/mnist/t10k-images.idx3-ubyte', 'c:/users/leca/Downloads/mnist/t10k-labels.idx1-ubyte')
-#    
-#    nn = Network([784, 50, 10])
-#    nn.train(mnist_loader.train_data, mnist_loader.train_label)
-#    accuracy = nn.accuracy(mnist_loader.test_data, mnist_loader.test_label)
+    mnist_loader = MNIST_loader('c:/users/leca/Downloads/mnist/train-images.idx3-ubyte', 'c:/users/leca/Downloads/mnist/train-labels.idx1-ubyte', 
+            'c:/users/leca/Downloads/mnist/t10k-images.idx3-ubyte', 'c:/users/leca/Downloads/mnist/t10k-labels.idx1-ubyte')
+    print("mnist loader is done")
+    nn = Network([784, 50, 10])
+    nn.train(mnist_loader.train_data, mnist_loader.train_label)
+    accuracy = nn.accuracy(mnist_loader.test_data, mnist_loader.test_label)
+    print("accuracy:"+str(accuracy))

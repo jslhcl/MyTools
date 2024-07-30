@@ -81,3 +81,7 @@ Retrieve daily stock price and send mail based on certain strategies
 ## network.py
 
 A toy Neural Network code from scratch, using MNIST to train the network with naive numerical gradient or backpropagation 
+
+## unblock-me-free
+
+Solver of the game [unblock-me-free](https://play.google.com/store/apps/details?id=com.kiragames.unblockmefree&hl=en_US)

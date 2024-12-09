@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">MuteTalk</string>
+    <string name="TextHint">Hello</string>
+</resources>

@@ -85,3 +85,13 @@ A toy Neural Network code from scratch, using MNIST to train the network with na
 ## unblock-me-free
 
 Solver of the game [unblock-me-free](https://play.google.com/store/apps/details?id=com.kiragames.unblockmefree&hl=en_US)
+
+## HelloWorld.user.js
+
+This is my first GreaseMonkey script.
+
+It adds a field text and a button in my NJU lilybbs blog.
+
+At first I tried to construct a mini search engine for my own blog, but then I found Google provides a more convenient tool called Google Custom Search. So I stopped here...  
+
+20150507: test git hook

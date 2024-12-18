@@ -1,0 +1,10 @@
+This program is to help my brother to get the subtotals from the IF tables in cffex.com.cn
+
+Usage:
+./getSubtotalWrapper.sh
+
+or
+
+./getSubtotal.sh 201312/24
+
+There will be a result.txt file generated
